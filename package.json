@@ -11,6 +11,10 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.5",
-    "imapflow": "^1.0.158"
+    "imapflow": "^1.0.158",
+    "mailparser": "^3.7.0",
+    "node-telegram-bot-api": "^0.65.1",
+    "promised-sqlite3": "^2.1.0",
+    "sqlite3": "^5.1.7"
   }
 }

@@ -1,6 +1,10 @@
 require('dotenv').config();
+const simpleParser = require('mailparser').simpleParser;
 
 const { ImapFlow } = require('imapflow');
+const { db: getDb, init } = require('./db');
+const { processEmail } = require('./emailProcessor');
+require('./telegram');
 
 const client = new ImapFlow({
 	host: 'imap.gmail.com',
@@ -19,22 +23,14 @@ BigInt.prototype.toJSON = function() {
 };
 
 const main = async () => {
+	await init();
 	await client.connect();
 	const lock = await client.getMailboxLock('INBOX');
+	const db = await getDb();
 
 	try {
-		for await (const mes of client.fetch({ sentSince: '2024-04-01T00:00:00Z'}, { uid: true, bodyStructure: true, envelope: true, threadId: true, bodyParts: true })) {
-			const mesWithAttachments = mes.bodyStructure?.childNodes?.find(node => node.type === 'application/octet-stream' || node.disposition === 'attachment');
-			if (mesWithAttachments) {
-				const attachments = mes.bodyStructure?.childNodes?.filter(node => node.type === 'application/octet-stream' || node.disposition === 'attachment');
-				// check if attachments are a json and a pdf file 
-				const jsonAttachment = attachments.find(node => node.parameters.name.toLowerCase().endsWith('.json'));
-				const pdfAttachment = attachments.find(node => node.parameters.name.toLowerCase().endsWith('.pdf'));
-
-				if (jsonAttachment && pdfAttachment) {
-					console.log(mes);
-				}
-			}
+		for await (const mes of client.fetch({ sentSince: '2024-04-01T00:00:00Z' }, { source: true, uid: true, bodyStructure: true, envelope: true, threadId: true })) {
+			await processEmail(db, mes);
 		}
 	} catch (err) {
 		console.error(err);
