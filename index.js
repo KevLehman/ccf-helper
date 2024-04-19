@@ -1,9 +1,10 @@
 require('dotenv').config();
-const { simpleParser } = require('mailparser');
 
 const { ImapFlow } = require('imapflow');
 const { db: getDb, init } = require('./db');
 const { processEmail } = require('./emailProcessor');
+const { args } = require('./argsMapper');
+
 require('./telegram');
 
 const client = new ImapFlow({
@@ -23,7 +24,12 @@ BigInt.prototype.toJSON = function toJSON() {
 };
 
 const main = async () => {
-  await init();
+	await init();
+	if (args['--telegramOnlyMode']) {
+		console.log('Telegram mode enabled. No new emails will be processed');
+		return;
+	}
+
   await client.connect();
   const lock = await client.getMailboxLock('INBOX');
   const db = await getDb();
