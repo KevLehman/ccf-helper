@@ -1,52 +1,74 @@
-require('dotenv').config();
+require('dotenv').config()
 
-const { ImapFlow } = require('imapflow');
-const { db: getDb, init } = require('./db');
-const { processEmail } = require('./emailProcessor');
-const { args } = require('./argsMapper');
+const { ImapFlow } = require('imapflow')
+const { db: getDb, init } = require('./db')
+const { processEmail } = require('./emailProcessor')
+const { args } = require('./argsMapper')
 
-require('./telegram');
+require('./telegram')
 
 const client = new ImapFlow({
-  host: 'imap.gmail.com',
-  port: 993,
-  secure: true,
-  auth: {
-    user: process.env.IMAP_USER,
-    pass: process.env.IMAP_PASSWORD,
-  },
-  logger: false,
-});
+    host: 'imap.gmail.com',
+    port: 993,
+    secure: true,
+    auth: {
+        user: process.env.IMAP_USER,
+        pass: process.env.IMAP_PASSWORD,
+    },
+    logger: false,
+})
 
 // Monkeypatch BigInt to return string when JSON.stringify is called
 BigInt.prototype.toJSON = function toJSON() {
-  return this.toString();
-};
+    return this.toString()
+}
 
 const main = async () => {
-	await init();
-	if (args['--telegramOnlyMode']) {
-		console.log('Telegram mode enabled. No new emails will be processed');
-		return;
-	}
-
-  await client.connect();
-  const lock = await client.getMailboxLock('INBOX');
-  const db = await getDb();
-
-  try {
-    // eslint-disable-next-line no-restricted-syntax
-    for await (const mes of client.fetch({ sentSince: '2024-04-01T00:00:00Z' }, {
-      source: true, uid: true, bodyStructure: true, envelope: true, threadId: true,
-    })) {
-      await processEmail(db, mes);
+    await init()
+    if (args['--telegramOnlyMode']) {
+        console.log('Telegram mode enabled. No new emails will be processed')
+        return
     }
-  } catch (err) {
-    console.error(err);
-  } finally {
-    lock.release();
-    await client.logout();
-  }
-};
 
-main().catch(console.error);
+    await client.connect()
+    const lock = await client.getMailboxLock('INBOX')
+    const db = await getDb()
+
+    try {
+        // eslint-disable-next-line no-restricted-syntax
+        for await (const mes of client.fetch(
+            { sentSince: '2024-04-01T00:00:00Z' },
+            {
+                source: true,
+                uid: true,
+                bodyStructure: true,
+                envelope: true,
+                threadId: true,
+            }
+        )) {
+            await processEmail(db, mes)
+        }
+    } catch (err) {
+        console.error(err)
+    } finally {
+        lock.release()
+        await client.logout()
+    }
+
+    process.on('unhandledPromiseRejection', () => {
+        lock.release()
+        client.logout()
+    })
+
+    process.on('unhandledRejection', () => {
+        lock.release()
+        client.logout()
+    })
+
+    process.on('beforeExit', () => {
+        lock.release()
+        client.logout()
+    })
+}
+
+main().catch(console.error)
