@@ -107,6 +107,7 @@ bot.on('message', async (msg) => {
 
     if (msg.text.startsWith('/ccf')) {
         await processCcfMessage(bot, db, chatId, msg)
+        return
     }
 
     bot.sendMessage(chatId, "I don't understand :(")
