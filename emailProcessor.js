@@ -8,7 +8,10 @@ async function processEmail(db, email) {
         'SELECT * FROM emails WHERE uid = ?',
         email.uid
     )
+    console.log(`Email received with ID: ${email.uid}`)
+
     if (dbEmail) {
+        console.log('Email already in database')
         return
     }
 
@@ -39,6 +42,8 @@ async function processEmail(db, email) {
             )
             return
         }
+
+        console.log(`Processing email attachments on email ${email.uid}`)
         // eslint-disable-next-line no-restricted-syntax
         for await (const attachment of parsedEmail.attachments) {
             const { content, ...att } = attachment
@@ -47,6 +52,9 @@ async function processEmail(db, email) {
                     attachment.contentType
                 )
             ) {
+                console.warn(
+                    `Ignoring attachment of type ${attachment.contentType}`
+                )
                 // eslint-disable-next-line no-continue
                 continue
             }

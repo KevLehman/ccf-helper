@@ -63,15 +63,21 @@ const main = async () => {
     // this event is registered and therefore lost. You can always start with fetchOldEmails: true to get those if you're unsure
     client.on('exists', async (data) => {
         console.log(`New email received: ${data.count}`)
-        const msg = await client.fetchOne(data.count, {
-            source: true,
-            uid: true,
-            envelope: true,
-            flags: true,
-            threadId: true,
-            bodyStructure: true,
-        })
-        await processEmail(db, msg)
+        try {
+            const msg = await client.fetchOne(data.count, {
+                source: true,
+                uid: true,
+                envelope: true,
+                flags: true,
+
+                threadId: true,
+
+                bodyStructure: true,
+            })
+            await processEmail(db, msg)
+        } catch (err) {
+            console.error(err)
+        }
     })
 
     process.on('unhandledPromiseRejection', () => {
